@@ -1,110 +1,122 @@
 {% extends 'base.html' %}
 
-{% block title %}Панель адміністратора | {{ block.super }}{% endblock %}
+{% block title %}Панель адміністратора | Платформа управління подіями{% endblock %}
 
 {% block content %}
-<h1>Панель адміністратора</h1>
+<div class="container">
+    <h1 class="mb-4">Панель адміністратора</h1>
 
-<ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">Користувачі</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">Події</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="comments-tab" data-bs-toggle="tab" data-bs-target="#comments" type="button" role="tab">Коментарі</button>
-    </li>
-</ul>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2>Статистика</h2>
+                </div>
+                <div class="card-body">
+                    <p><strong>Загальна кількість подій:</strong> {{ events|length }}</p>
+                    <p><strong>Загальна кількість коментарів:</strong> {{ comments|length }}</p>
+                </div>
+            </div>
+        </div>
 
-<div class="tab-content" id="adminTabsContent">
-    <div class="tab-pane fade show active" id="users" role="tabpanel">
-        <h2>Користувачі</h2>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Ім'я користувача</th>
-                    <th>Email</th>
-                    <th>Дата реєстрації</th>
-                    <th>Останній вхід</th>
-                    <th>Дії</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user in users %}
-                <tr>
-                    <td>{{ user.username }}</td>
-                    <td>{{ user.email }}</td>
-                    <td>{{ user.date_joined|date:"j F Y" }}</td>
-                    <td>{{ user.last_login|date:"j F Y" }}</td>
-                    <td>
-                        <a href="{% url 'change_user_password' pk=user.pk %}" class="btn btn-sm btn-outline-primary">Змінити пароль</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2>Швидкі дії</h2>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'event_create' %}" class="btn btn-primary mb-2">Створити нову подію</a>
+                    <a href="/admin/" class="btn btn-secondary mb-2">Перейти до вбудованої панелі адміністратора</a>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="tab-pane fade" id="events" role="tabpanel">
-        <h2>Події</h2>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Назва</th>
-                    <th>Організатор</th>
-                    <th>Дата</th>
-                    <th>Місце</th>
-                    <th>Дії</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for event in events %}
-                <tr>
-                    <td>{{ event.title }}</td>
-                    <td>{{ event.organizer.username }}</td>
-                    <td>{{ event.date|date:"j F Y" }}</td>
-                    <td>{{ event.location }}</td>
-                    <td>
-                        <a href="{% url 'event_detail' pk=event.pk %}" class="btn btn-sm btn-outline-primary">Переглянути</a>
-                        <a href="{% url 'event_edit' pk=event.pk %}" class="btn btn-sm btn-outline-secondary">Редагувати</a>
-                        <a href="{% url 'event_delete' pk=event.pk %}" class="btn btn-sm btn-outline-danger">Видалити</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2>Останні події</h2>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Назва</th>
+                            <th>Організатор</th>
+                            <th>Дата</th>
+                            <th>Створено</th>
+                            <th>Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in events %}
+                        <tr>
+                            <td><a href="{% url 'event_detail' event.pk %}">{{ event.title }}</a></td>
+                            <td>{{ event.organizer.username }}</td>
+                            <td>{{ event.date|date:"d.m.Y H:i" }}</td>
+                            <td>{{ event.created_at|date:"d.m.Y" }}</td>
+                            <td>
+                                <a href="{% url 'event_edit' event.pk %}" class="btn btn-sm btn-primary">Редагувати</a>
+                                <a href="{% url 'event_delete' event.pk %}" class="btn btn-sm btn-danger">Видалити</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">Немає подій</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <div class="tab-pane fade" id="comments" role="tabpanel">
-        <h2>Коментарі</h2>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Подія</th>
-                    <th>Автор</th>
-                    <th>Зміст</th>
-                    <th>Дата</th>
-                    <th>Дії</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for comment in comments %}
-                <tr>
-                    <td><a href="{% url 'event_detail' pk=comment.event.pk %}">{{ comment.event.title }}</a></td>
-                    <td>{{ comment.author.username }}</td>
-                    <td>{{ comment.content|truncatewords:10 }}</td>
-                    <td>{{ comment.created_at|date:"j F Y" }}</td>
-                    <td>
-                        <form method="post" action="{% url 'comment_delete' pk=comment.pk %}" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-outline-danger">Видалити</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="card">
+        <div class="card-header">
+            <h2>Останні коментарі</h2>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Автор</th>
+                            <th>Подія</th>
+                            <th>Текст</th>
+                            <th>Дата</th>
+                            <th>Тип</th>
+                            <th>Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for comment in comments %}
+                        <tr>
+                            <td>{{ comment.author.username }}</td>
+                            <td><a href="{% url 'event_detail' comment.event.pk %}">{{ comment.event.title }}</a></td>
+                            <td>{{ comment.text|truncatechars:50 }}</td>
+                            <td>{{ comment.created_at|date:"d.m.Y H:i" }}</td>
+                            <td>
+                                {% if comment.parent %}
+                                <span class="badge bg-info">Відповідь</span>
+                                {% else %}
+                                <span class="badge bg-primary">Коментар</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'delete_comment' comment.pk %}" class="btn btn-sm btn-danger"
+                                   onclick="return confirm('Ви впевнені, що хочете видалити цей коментар?')">Видалити</a>
+                                <a href="{% url 'event_detail' comment.event.pk %}#comment-{{ comment.id }}" class="btn btn-sm btn-secondary">Перегляд</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">Немає коментарів</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

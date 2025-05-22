@@ -1,75 +1,143 @@
 {% extends 'base.html' %}
-{% load custom_filters %}
 
-{% block title %}{{ event.title }} | {{ block.super }}{% endblock %}
+{% block title %}{{ event.title }} | Платформа управління подіями{% endblock %}
 
 {% block content %}
 <div class="row">
-    <div class="col-12">
+    <div class="col-md-8 offset-md-2">
         <h1>{{ event.title }}</h1>
         <p class="text-muted">
-            Організатор: {{ event.organizer.username }},
-            створено: {{ event.created_at|date:"j F Y" }}
-            {% if event.created_at != event.updated_at %}
-            (оновлено: {{ event.updated_at|date:"j F Y" }})
-            {% endif %}
+            Організатор: <span class="event-organizer">{{ event.organizer.username }}</span>,
+            створено: <span class="event-date">{{ event.created_at|date:"d F Y" }}</span>
+            {% if event.updated_at %}(оновлено: <span class="event-date">{{ event.updated_at|date:"d F Y" }}</span>){% endif %}
         </p>
 
-        {% if user.is_authenticated and user == event.organizer or user.is_superuser %}
+        {% if user == event.organizer or user.is_superuser %}
         <div class="mb-3">
-            <a href="{% url 'event_edit' pk=event.pk %}" class="btn btn-outline-primary">Редагувати</a>
-            <a href="{% url 'event_delete' pk=event.pk %}" class="btn btn-outline-danger">Видалити</a>
-        </div>
-        {% endif %}
-    </div>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Деталі</h5>
-                <p class="card-text">{{ event.description }}</p>
-                <p class="card-text"><strong>Дата:</strong> {{ event.created_at|date:"j F Y" }}</p>
-                <p class="card-text"><strong>Місце:</strong> {{ event.location }}</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-8">
-        <h3>Обговорення</h3>
-
-        {% if user.is_authenticated %}
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Додати коментар</h5>
-                <form method="post">
-                    {% csrf_token %}
-                    {{ form.as_p }}
-                    <button type="submit" class="btn btn-primary">Надіслати</button>
-                </form>
-            </div>
+            <a href="{% url 'event_edit' event.pk %}" class="btn btn-primary">Редагувати</a>
+            <a href="{% url 'event_delete' event.pk %}" class="btn btn-danger">Видалити</a>
         </div>
         {% endif %}
 
-        {% if comments %}
-            {% for comment in comments %}
-            <div class="comment">
-                <p><strong>{{ comment.author.username }}</strong> - {{ event.created_at|date:"j F Y" }}</p>
-                <p>{{ comment.content }}</p>
-                {% if user == comment.author or user.is_superuser %}
-                <form method="post" action="{% url 'comment_delete' pk=comment.pk %}" class="d-inline">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline-danger">Видалити</button>
-                </form>
+        <div class="card mb-4 event-details">
+            <div class="card-header">
+                <h2>Деталі</h2>
+            </div>
+            <div class="card-body">
+                <p>{{ event.description|linebreaks }}</p>
+                <p><strong>Дата:</strong> {{ event.date|date:"d F Y H:i" }}</p>
+                <p><strong>Місце:</strong> {{ event.location }}</p>
+            </div>
+        </div>
+
+        <div class="card mb-4 discussion-section">
+            <div class="card-header">
+                <h2>Обговорення</h2>
+            </div>
+            <div class="card-body">
+                {% if user.is_authenticated %}
+                <div class="mb-4">
+                    <h3>Додати коментар</h3>
+                    <form method="post" action="{% url 'event_detail' event.pk %}">
+                        {% csrf_token %}
+                        {{ comment_form.as_p }}
+                        <button type="submit" name="comment_submit" class="btn btn-primary">Надіслати</button>
+                    </form>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <a href="{% url 'login' %}">Увійдіть</a>, щоб залишити коментар.
+                </div>
                 {% endif %}
+
+                <div class="comments-section">
+                    {% for comment in comments %}
+                    <div class="comment mb-3" id="comment-{{ comment.id }}">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><strong>{{ comment.author.username }}</strong> - {{ comment.created_at|date:"d F Y H:i" }}</span>
+                                {% if user == comment.author or user.is_superuser %}
+                                <a href="{% url 'delete_comment' comment.pk %}" class="btn btn-sm btn-danger"
+                                   onclick="return confirm('Ви впевнені, що хочете видалити цей коментар?')">Видалити</a>
+                                {% endif %}
+                            </div>
+                            <div class="card-body">
+                                <p>{{ comment.text|linebreaks }}</p>
+
+                                {% if user.is_authenticated %}
+                                <button class="btn btn-sm btn-outline-primary reply-btn"
+                                        data-comment-id="{{ comment.id }}">
+                                    Відповісти
+                                </button>
+
+                                <div class="reply-form mt-2" id="reply-form-{{ comment.id }}" style="display: none;">
+                                    <form method="post" action="{% url 'add_reply' event.pk comment.pk %}">
+                                        {% csrf_token %}
+                                        {{ reply_form.as_p }}
+                                        <button type="submit" class="btn btn-sm btn-primary">Відповісти</button>
+                                        <button type="button" class="btn btn-sm btn-secondary cancel-reply"
+                                                data-comment-id="{{ comment.id }}">
+                                            Скасувати
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endif %}
+
+                                <!-- Відповіді на коментар -->
+                                {% if comment.replies.all %}
+                                <div class="replies mt-3">
+                                    {% for reply in comment.replies.all %}
+                                    <div class="reply card mb-2">
+                                        <div class="card-header d-flex justify-content-between align-items-center bg-light">
+                                            <span><strong>{{ reply.author.username }}</strong> - {{ reply.created_at|date:"d F Y H:i" }}</span>
+                                            {% if user == reply.author or user.is_superuser %}
+                                            <a href="{% url 'delete_comment' reply.pk %}" class="btn btn-sm btn-danger"
+                                               onclick="return confirm('Ви впевнені, що хочете видалити цю відповідь?')">Видалити</a>
+                                            {% endif %}
+                                        </div>
+                                        <div class="card-body">
+                                            <p>{{ reply.text|linebreaks }}</p>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">Поки немає коментарів. Будьте першим!</p>
+                    {% endfor %}
+                </div>
             </div>
-            {% endfor %}
-        {% else %}
-            <p>Коментарів ще немає. Будьте першим, хто прокоментує!</p>
-        {% endif %}
+        </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Показати форму відповіді при натисканні кнопки "Відповісти"
+    const replyButtons = document.querySelectorAll('.reply-btn');
+    replyButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const commentId = this.getAttribute('data-comment-id');
+            const replyForm = document.getElementById(`reply-form-${commentId}`);
+            replyForm.style.display = 'block';
+            this.style.display = 'none';
+        });
+    });
+
+    // Сховати форму відповіді при натисканні кнопки "Скасувати"
+    const cancelButtons = document.querySelectorAll('.cancel-reply');
+    cancelButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const commentId = this.getAttribute('data-comment-id');
+            const replyForm = document.getElementById(`reply-form-${commentId}`);
+            const replyButton = document.querySelector(`.reply-btn[data-comment-id="${commentId}"]`);
+            replyForm.style.display = 'none';
+            replyButton.style.display = 'inline-block';
+        });
+    });
+});
+</script>
 {% endblock %}

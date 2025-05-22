@@ -1,39 +1,77 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth import logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login, logout
 from django.contrib import messages
-from django.contrib.auth.models import User
 from .models import Event, Comment
-from .forms import EventForm, CommentForm, UserPasswordChangeForm, CustomUserCreationForm
+from .forms import EventForm, CustomUserCreationForm, CommentForm, ReplyForm
 
-def is_admin(user):
-    return user.is_superuser
 
 def event_list(request):
-    events = Event.objects.all()
+    events = Event.objects.all().order_by('-created_at')
     return render(request, 'events/event_list.html', {'events': events})
+
 
 def event_detail(request, pk):
     event = get_object_or_404(Event, pk=pk)
-    comments = event.comments.all()
+    comments = Comment.objects.filter(event=event, parent=None).order_by('created_at')
 
-    if request.method == 'POST' and request.user.is_authenticated:
-        form = CommentForm(request.POST)
-        if form.is_valid():
-            comment = form.save(commit=False)
-            comment.event = event
-            comment.author = request.user
-            comment.save()
-            messages.success(request, 'Ваш коментар додано.')
-            return redirect('event_detail', pk=pk)
+    # Форма для нового коментаря
+    if request.method == 'POST' and 'comment_submit' in request.POST:
+        comment_form = CommentForm(request.POST)
+        if comment_form.is_valid() and request.user.is_authenticated:
+            new_comment = comment_form.save(commit=False)
+            new_comment.event = event
+            new_comment.author = request.user
+            new_comment.save()
+            messages.success(request, 'Коментар додано успішно!')
+            return redirect('event_detail', pk=event.pk)
     else:
-        form = CommentForm()
+        comment_form = CommentForm()
 
-    return render(request, 'events/event_detail.html', {
+    # Форма для відповіді на коментар
+    reply_form = ReplyForm()
+
+    context = {
         'event': event,
         'comments': comments,
-        'form': form
-    })
+        'comment_form': comment_form,
+        'reply_form': reply_form,
+    }
+    return render(request, 'events/event_detail.html', context)
+
+
+@login_required
+def add_reply(request, event_pk, comment_pk):
+    event = get_object_or_404(Event, pk=event_pk)
+    parent_comment = get_object_or_404(Comment, pk=comment_pk)
+
+    if request.method == 'POST':
+        form = ReplyForm(request.POST)
+        if form.is_valid():
+            reply = form.save(commit=False)
+            reply.event = event
+            reply.author = request.user
+            reply.parent = parent_comment
+            reply.save()
+            messages.success(request, 'Відповідь додано успішно!')
+
+    return redirect('event_detail', pk=event_pk)
+
+
+@login_required
+def delete_comment(request, pk):
+    comment = get_object_or_404(Comment, pk=pk)
+    event_pk = comment.event.pk
+
+    # Перевірка, чи користувач є автором коментаря або адміністратором
+    if request.user == comment.author or request.user.is_superuser:
+        comment.delete()
+        messages.success(request, 'Коментар видалено успішно!')
+    else:
+        messages.error(request, 'У вас немає прав для видалення цього коментаря.')
+
+    return redirect('event_detail', pk=event_pk)
+
 
 @login_required
 def event_create(request):
@@ -43,104 +81,73 @@ def event_create(request):
             event = form.save(commit=False)
             event.organizer = request.user
             event.save()
-            messages.success(request, 'Подію успішно створено!')
+            messages.success(request, 'Подію створено успішно!')
             return redirect('event_detail', pk=event.pk)
     else:
         form = EventForm()
+    return render(request, 'events/event_create.html', {'form': form})
 
-    return render(request, 'events/event_form.html', {'form': form, 'action': 'Створити'})
 
 @login_required
 def event_edit(request, pk):
     event = get_object_or_404(Event, pk=pk)
-
-    # Check if user is the organizer or an admin
     if request.user != event.organizer and not request.user.is_superuser:
-        messages.error(request, 'Ви не маєте дозволу редагувати цю подію.')
+        messages.error(request, 'У вас немає прав для редагування цієї події.')
         return redirect('event_detail', pk=pk)
 
     if request.method == 'POST':
         form = EventForm(request.POST, instance=event)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Подію успішно оновлено!')
+            messages.success(request, 'Подію оновлено успішно!')
             return redirect('event_detail', pk=pk)
     else:
         form = EventForm(instance=event)
+    return render(request, 'events/event_edit.html', {'form': form, 'event': event})
 
-    return render(request, 'events/event_form.html', {'form': form, 'action': 'Редагувати'})
 
 @login_required
 def event_delete(request, pk):
     event = get_object_or_404(Event, pk=pk)
-
-    # Check if user is the organizer or an admin
     if request.user != event.organizer and not request.user.is_superuser:
-        messages.error(request, 'Ви не маєте дозволу на видалення цієї події.')
+        messages.error(request, 'У вас немає прав для видалення цієї події.')
         return redirect('event_detail', pk=pk)
 
     if request.method == 'POST':
         event.delete()
-        messages.success(request, 'Подію успішно видалено!')
+        messages.success(request, 'Подію видалено успішно!')
         return redirect('event_list')
+    return render(request, 'events/event_delete.html', {'event': event})
 
-    return render(request, 'events/event_confirm_delete.html', {'event': event})
-
-@login_required
-def comment_delete(request, pk):
-    comment = get_object_or_404(Comment, pk=pk)
-    event_pk = comment.event.pk
-
-    if request.user != comment.author and not request.user.is_superuser:
-        messages.error(request, 'У вас немає прав для видалення цього коментаря.')
-        return redirect('event_detail', pk=event_pk)
-
-    if request.method == 'POST':
-        comment.delete()
-        messages.success(request, 'Коментар успішно видалено!')
-
-    return redirect('event_detail', pk=event_pk)
-
-@user_passes_test(is_admin)
-def admin_dashboard(request):
-    users = User.objects.all()
-    events = Event.objects.all()
-    comments = Comment.objects.all()
-
-    return render(request, 'admin/dashboard.html', {
-        'users': users,
-        'events': events,
-        'comments': comments
-    })
-
-@user_passes_test(is_admin)
-def change_user_password(request, pk):
-    user = get_object_or_404(User, pk=pk)
-
-    if request.method == 'POST':
-        form = UserPasswordChangeForm(request.POST)
-        if form.is_valid():
-            user.set_password(form.cleaned_data['new_password'])
-            user.save()
-            messages.success(request, f'Password for {user.username} changed successfully!')
-            return redirect('admin_dashboard')
-    else:
-        form = UserPasswordChangeForm()
-
-    return render(request, 'admin/change_password.html', {'form': form, 'user': user})
 
 def register(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Обліковий запис успішно створено! Тепер ви можете увійти.')
-            return redirect('login')
+            user = form.save()
+            login(request, user)
+            messages.success(request, 'Реєстрацію завершено успішно!')
+            return redirect('event_list')
     else:
         form = CustomUserCreationForm()
-
     return render(request, 'auth/register.html', {'form': form})
+
+
+def admin_dashboard(request):
+    if not request.user.is_superuser:
+        messages.error(request, 'У вас немає прав доступу до цієї сторінки.')
+        return redirect('event_list')
+
+    events = Event.objects.all().order_by('-created_at')
+    comments = Comment.objects.all().order_by('-created_at')
+
+    context = {
+        'events': events,
+        'comments': comments,
+    }
+    return render(request, 'admin/dashboard.html', context)
 
 def logout_view(request):
     logout(request)
+    messages.success(request, 'Ви успішно вийшли з системи.')
     return redirect('event_list')
