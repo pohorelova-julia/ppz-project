@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Події | {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>Події</h1>
+        {% if user.is_authenticated %}
+        <a href="{% url 'event_create' %}" class="btn btn-primary mb-3">Створити нову подію</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    {% if events %}
+        {% for event in events %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card event-card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ event.title }}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">{{ event.date|uk_date:"j F Y, H:i" }}</h6>
+                    <p class="card-text">{{ event.description|truncatewords:20 }}</p>
+                    <p class="card-text"><small class="text-muted">Місце: {{ event.location }}</small></p>
+                    <p class="card-text"><small class="text-muted">Організатор: {{ event.organizer.username }}</small></p>
+                    <a href="{% url 'event_detail' pk=event.pk %}" class="btn btn-outline-primary">Детальніше</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <p>Немає доступних подій.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
