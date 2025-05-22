@@ -85,7 +85,7 @@ def event_create(request):
             return redirect('event_detail', pk=event.pk)
     else:
         form = EventForm()
-    return render(request, 'events/event_create.html', {'form': form})
+    return render(request, 'events/event_form.html', {'form': form})
 
 
 @login_required
