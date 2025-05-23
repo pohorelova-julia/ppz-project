@@ -2,8 +2,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login, logout
 from django.contrib import messages
+from django.contrib.auth.models import User
 from .models import Event, Comment
-from .forms import EventForm, CustomUserCreationForm, CommentForm, ReplyForm
+from .forms import EventForm, CustomUserCreationForm, CommentForm, ReplyForm, AdminPasswordChangeForm
+
 
 
 def event_list(request):
@@ -136,6 +138,33 @@ def register(request):
     return render(request, 'auth/register.html', {'form': form})
 
 
+@login_required
+def admin_change_password(request, user_id):
+    """Представлення для зміни пароля користувача адміністратором"""
+    if not request.user.is_superuser:
+        messages.error(request, 'У вас немає прав доступу до цієї сторінки.')
+        return redirect('event_list')
+
+    user = get_object_or_404(User, pk=user_id)
+
+    if request.method == 'POST':
+        form = AdminPasswordChangeForm(user, request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Пароль користувача {user.username} успішно змінено.')
+            return redirect('admin_dashboard')
+        else:
+            # Виводимо помилки форми в консоль для налагодження
+            print(f"Form errors: {form.errors}")
+    else:
+        form = AdminPasswordChangeForm(user)
+
+    return render(request, 'admin/change_password.html', {
+        'form': form,
+        'user_to_change': user
+    })
+
+
 def admin_dashboard(request):
     if not request.user.is_superuser:
         messages.error(request, 'У вас немає прав доступу до цієї сторінки.')
@@ -143,16 +172,18 @@ def admin_dashboard(request):
 
     events = Event.objects.all().order_by('-created_at')
     comments = Comment.objects.all().order_by('-created_at')
+    users = User.objects.all().order_by('username')
 
     context = {
         'events': events,
         'comments': comments,
+        'users': users,
     }
     return render(request, 'admin/dashboard.html', context)
 
-
 # Власне представлення для виходу з системи
 def logout_view(request):
+    """Власне представлення для виходу з системи"""
     logout(request)
     messages.success(request, 'Ви успішно вийшли з системи.')
     return redirect('event_list')
