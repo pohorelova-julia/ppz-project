@@ -1,44 +1,76 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ action }} подію | {{ block.super }}{% endblock %}
+{% block title %}{% if event %}Редагування події{% else %}Створення нової події{% endif %} | Платформа управління подіями{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-8">
-        <h1>{{ action }} подію</h1>
-        <form method="post">
-            {% csrf_token %}
-            <div class="mb-3">
-                <label for="{{ form.title.id_for_label }}" class="form-label">Назва</label>
-                {{ form.title }}
-                {% if form.title.errors %}
-                <div class="text-danger">{{ form.title.errors }}</div>
-                {% endif %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="h3 mb-0">{% if event %}Редагування події{% else %}Створення нової події{% endif %}</h1>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.title.id_for_label }}" class="form-label">{{ form.title.label }}</label>
+                            {{ form.title }}
+                            {% if form.title.errors %}
+                            <div class="text-danger">
+                                {% for error in form.title.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="text-danger">
+                                {% for error in form.description.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.date.id_for_label }}" class="form-label">{{ form.date.label }}</label>
+                            {{ form.date }}
+                            {% if form.date.errors %}
+                            <div class="text-danger">
+                                {% for error in form.date.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Формат: РРРР-ММ-ДД ГГ:ХХ</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.location.id_for_label }}" class="form-label">{{ form.location.label }}</label>
+                            {{ form.location }}
+                            {% if form.location.errors %}
+                            <div class="text-danger">
+                                {% for error in form.location.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">{% if event %}Зберегти зміни{% else %}Створити подію{% endif %}</button>
+                            <a href="{% if event %}{% url 'event_detail' event.pk %}{% else %}{% url 'event_list' %}{% endif %}" class="btn btn-secondary">Скасувати</a>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="mb-3">
-                <label for="{{ form.description.id_for_label }}" class="form-label">Опис</label>
-                {{ form.description }}
-                {% if form.description.errors %}
-                <div class="text-danger">{{ form.description.errors }}</div>
-                {% endif %}
-            </div>
-            <div class="mb-3">
-                <label for="{{ form.date.id_for_label }}" class="form-label">Дата та час</label>
-                {{ form.date }}
-                {% if form.date.errors %}
-                <div class="text-danger">{{ form.date.errors }}</div>
-                {% endif %}
-            </div>
-            <div class="mb-3">
-                <label for="{{ form.location.id_for_label }}" class="form-label">Місце проведення</label>
-                {{ form.location }}
-                {% if form.location.errors %}
-                <div class="text-danger">{{ form.location.errors }}</div>
-                {% endif %}
-            </div>
-            <button type="submit" class="btn btn-primary">Зберегти</button>
-            <a href="{% url 'event_list' %}" class="btn btn-outline-secondary">Скасувати</a>
-        </form>
+        </div>
     </div>
 </div>
 {% endblock %}
