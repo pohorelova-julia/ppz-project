@@ -15,6 +15,7 @@
                 <div class="card-body">
                     <p><strong>Загальна кількість подій:</strong> {{ events|length }}</p>
                     <p><strong>Загальна кількість коментарів:</strong> {{ comments|length }}</p>
+                    <p><strong>Загальна кількість користувачів:</strong> {{ users|length }}</p>
                 </div>
             </div>
         </div>
@@ -28,6 +29,52 @@
                     <a href="{% url 'event_create' %}" class="btn btn-primary mb-2">Створити нову подію</a>
                     <a href="/admin/" class="btn btn-secondary mb-2">Перейти до вбудованої панелі адміністратора</a>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2>Користувачі</h2>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Ім'я користувача</th>
+                            <th>Email</th>
+                            <th>Дата реєстрації</th>
+                            <th>Статус</th>
+                            <th>Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.date_joined|date:"d.m.Y H:i" }}</td>
+                            <td>
+                                {% if user.is_superuser %}
+                                <span class="badge bg-danger">Адміністратор</span>
+                                {% elif user.is_staff %}
+                                <span class="badge bg-warning">Персонал</span>
+                                {% else %}
+                                <span class="badge bg-success">Користувач</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'admin_change_password' user.id %}" class="btn btn-sm btn-primary">Змінити пароль</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">Немає користувачів</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
