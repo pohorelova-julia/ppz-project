@@ -41,6 +41,56 @@ def event_detail(request, pk):
 
 
 @login_required
+def event_create(request):
+    if request.method == 'POST':
+        form = EventForm(request.POST)
+        if form.is_valid():
+            event = form.save(commit=False)
+            event.organizer = request.user
+            event.save()
+            messages.success(request, 'Подію створено успішно!')
+            return redirect('event_detail', pk=event.pk)
+    else:
+        form = EventForm()
+    # Використовуємо спільний шаблон event_form.html
+    return render(request, 'events/event_form.html', {'form': form})
+
+
+@login_required
+def event_edit(request, pk):
+    event = get_object_or_404(Event, pk=pk)
+    if request.user != event.organizer and not request.user.is_superuser:
+        messages.error(request, 'У вас немає прав для редагування цієї події.')
+        return redirect('event_detail', pk=pk)
+
+    if request.method == 'POST':
+        form = EventForm(request.POST, instance=event)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Подію оновлено успішно!')
+            return redirect('event_detail', pk=pk)
+    else:
+        form = EventForm(instance=event)
+    # Використовуємо спільний шаблон event_form.html і передаємо event для розрізнення
+    return render(request, 'events/event_form.html', {'form': form, 'event': event})
+
+
+@login_required
+def event_delete(request, pk):
+    event = get_object_or_404(Event, pk=pk)
+    if request.user != event.organizer and not request.user.is_superuser:
+        messages.error(request, 'У вас немає прав для видалення цієї події.')
+        return redirect('event_detail', pk=pk)
+
+    if request.method == 'POST':
+        event.delete()
+        messages.success(request, 'Подію видалено успішно!')
+        return redirect('event_list')
+    # Використовуємо шаблон для підтвердження видалення
+    return render(request, 'events/event_confirm_delete.html', {'event': event})
+
+
+@login_required
 def add_reply(request, event_pk, comment_pk):
     event = get_object_or_404(Event, pk=event_pk)
     parent_comment = get_object_or_404(Comment, pk=comment_pk)
@@ -73,53 +123,6 @@ def delete_comment(request, pk):
     return redirect('event_detail', pk=event_pk)
 
 
-@login_required
-def event_create(request):
-    if request.method == 'POST':
-        form = EventForm(request.POST)
-        if form.is_valid():
-            event = form.save(commit=False)
-            event.organizer = request.user
-            event.save()
-            messages.success(request, 'Подію створено успішно!')
-            return redirect('event_detail', pk=event.pk)
-    else:
-        form = EventForm()
-    return render(request, 'events/event_form.html', {'form': form})
-
-
-@login_required
-def event_edit(request, pk):
-    event = get_object_or_404(Event, pk=pk)
-    if request.user != event.organizer and not request.user.is_superuser:
-        messages.error(request, 'У вас немає прав для редагування цієї події.')
-        return redirect('event_detail', pk=pk)
-
-    if request.method == 'POST':
-        form = EventForm(request.POST, instance=event)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Подію оновлено успішно!')
-            return redirect('event_detail', pk=pk)
-    else:
-        form = EventForm(instance=event)
-    return render(request, 'events/event_edit.html', {'form': form, 'event': event})
-
-
-@login_required
-def event_delete(request, pk):
-    event = get_object_or_404(Event, pk=pk)
-    if request.user != event.organizer and not request.user.is_superuser:
-        messages.error(request, 'У вас немає прав для видалення цієї події.')
-        return redirect('event_detail', pk=pk)
-
-    if request.method == 'POST':
-        event.delete()
-        messages.success(request, 'Подію видалено успішно!')
-        return redirect('event_list')
-    return render(request, 'events/event_delete.html', {'event': event})
-
-
 def register(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
@@ -147,6 +150,8 @@ def admin_dashboard(request):
     }
     return render(request, 'admin/dashboard.html', context)
 
+
+# Власне представлення для виходу з системи
 def logout_view(request):
     logout(request)
     messages.success(request, 'Ви успішно вийшли з системи.')
