@@ -24,4 +24,5 @@ urlpatterns = [
 
     # Адміністрування
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('admin/change-password/<int:user_id>/', views.admin_change_password, name='admin_change_password'),
 ]
