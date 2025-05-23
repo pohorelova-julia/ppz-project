@@ -1,7 +1,8 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, PasswordChangeForm, SetPasswordForm
 from django.contrib.auth.models import User
 from .models import Event, Comment
+
 
 class EventForm(forms.ModelForm):
     class Meta:
@@ -20,6 +21,7 @@ class EventForm(forms.ModelForm):
             'location': 'Місце проведення',
         }
 
+
 class CustomUserCreationForm(UserCreationForm):
     email = forms.EmailField(required=True)
 
@@ -34,23 +36,47 @@ class CustomUserCreationForm(UserCreationForm):
             user.save()
         return user
 
+
+class UserPasswordChangeForm(PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields:
+            self.fields[field].widget.attrs.update({'class': 'form-control'})
+
+
+class AdminPasswordChangeForm(SetPasswordForm):
+    """Форма для зміни пароля користувача адміністратором"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields:
+            self.fields[field].widget.attrs.update({'class': 'form-control'})
+
+        # Змінюємо мітки полів на українську
+        self.fields['new_password1'].label = 'Новий пароль'
+        self.fields['new_password2'].label = 'Підтвердження нового пароля'
+
+
 class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
         fields = ['text']
         widgets = {
-            'text': forms.Textarea(attrs={'rows': 4, 'class': 'form-control', 'placeholder': 'Напишіть ваш коментар...'}),
+            'text': forms.Textarea(
+                attrs={'rows': 4, 'class': 'form-control', 'placeholder': 'Напишіть ваш коментар...'}),
         }
         labels = {
             'text': 'Коментар:',
         }
+
 
 class ReplyForm(forms.ModelForm):
     class Meta:
         model = Comment
         fields = ['text']
         widgets = {
-            'text': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Напишіть вашу відповідь...'}),
+            'text': forms.Textarea(
+                attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Напишіть вашу відповідь...'}),
         }
         labels = {
             'text': 'Відповідь:',
