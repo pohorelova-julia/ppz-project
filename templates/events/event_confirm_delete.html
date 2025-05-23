@@ -1,20 +1,46 @@
 {% extends 'base.html' %}
 
-{% block title %}Видалення події | {{ block.super }}{% endblock %}
+{% block title %}Видалення події | Платформа управління подіями{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-8">
-        <h1>Видалення події</h1>
-        <div class="alert alert-danger">
-            <p>Ви впевнені, що хочете видалити подію "{{ event.title }}"?</p>
-            <p>Цю дію неможливо скасувати.</p>
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="h3 mb-0">Видалення події</h1>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h4>Увага!</h4>
+                        <p>Ви впевнені, що хочете видалити подію <strong>"{{ event.title }}"</strong>?</p>
+                        <p>Ця дія не може бути скасована. Всі коментарі та відповіді до цієї події також будуть видалені.</p>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ event.title }}</h5>
+                            <p class="card-text">{{ event.description|truncatechars:200 }}</p>
+                            <p class="text-muted">
+                                <small>
+                                    <strong>Дата:</strong> {{ event.date|date:"d.m.Y H:i" }}<br>
+                                    <strong>Місце:</strong> {{ event.location }}<br>
+                                    <strong>Організатор:</strong> {{ event.organizer.username }}
+                                </small>
+                            </p>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger">Так, видалити подію</button>
+                            <a href="{% url 'event_detail' event.pk %}" class="btn btn-secondary">Ні, скасувати</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-        <form method="post">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-danger">Так, видалити</button>
-            <a href="{% url 'event_detail' pk=event.pk %}" class="btn btn-outline-secondary">Скасувати</a>
-        </form>
     </div>
 </div>
 {% endblock %}
